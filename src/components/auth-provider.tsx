@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
 import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
@@ -32,23 +32,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const profileRef = doc(db, "users", currentUser.uid);
-      const profileSnapshot = await getDoc(profileRef);
 
-      if (!profileSnapshot.exists()) {
-        await setDoc(profileRef, {
+      try {
+        const profileSnapshot = await getDoc(profileRef);
+
+        if (!profileSnapshot.exists()) {
+          await setDoc(profileRef, {
+            uid: currentUser.uid,
+            email: currentUser.email,
+            displayName: currentUser.displayName,
+            photoURL: currentUser.photoURL,
+            updatedAt: serverTimestamp(),
+            createdAt: serverTimestamp(),
+          });
+        }
+      } catch (error) {
+        console.warn("User profile could not be loaded immediately", error);
+        setProfile({
           uid: currentUser.uid,
           email: currentUser.email,
           displayName: currentUser.displayName,
           photoURL: currentUser.photoURL,
-          credits: 0,
-          updatedAt: serverTimestamp(),
-          createdAt: serverTimestamp(),
         });
       }
 
-      return onSnapshot(profileRef, (snapshot) => {
-        setProfile(snapshot.data() as UserProfile);
-      });
+      return onSnapshot(
+        profileRef,
+        (snapshot) => {
+          if (snapshot.exists()) {
+            setProfile(snapshot.data() as UserProfile);
+          }
+        },
+        (error) => {
+          console.warn("User profile snapshot unavailable", error);
+        },
+      );
     });
   }, []);
 
@@ -73,4 +91,3 @@ export function useAuth() {
   }
   return value;
 }
-

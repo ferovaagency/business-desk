@@ -1,25 +1,58 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+﻿@import "tailwindcss";
 
 :root {
   color-scheme: dark;
+  --md-sys-color-background: #121212;
+  --md-sys-color-surface: #1c1b1f;
+  --md-sys-color-surface-container-low: #211f26;
+  --md-sys-color-surface-container: #2b2930;
+  --md-sys-color-surface-container-high: #36343b;
+  --md-sys-color-outline: #938f99;
+  --md-sys-color-primary: #a8c7fa;
+  --md-sys-color-on-primary: #062e6f;
+  --md-sys-color-secondary: #d7e3f8;
+  --md-sys-color-on-surface: #e6e1e5;
+  --md-sys-color-on-surface-variant: #cac4d0;
+  --md-sys-color-error: #f2b8b5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--md-sys-color-background);
 }
 
 body {
+  min-height: 100vh;
   margin: 0;
-  background: #070b14;
-  color: #eef2ff;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(168, 199, 250, 0.18), transparent 28rem),
+    radial-gradient(circle at 92% 18%, rgba(215, 227, 248, 0.08), transparent 28rem),
+    linear-gradient(180deg, #121212 0%, #17151b 48%, #121212 100%);
+  color: var(--md-sys-color-on-surface);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
 }
 
 .prose-business {
-  color: #dbe4ff;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .prose-business h1,
 .prose-business h2,
-.prose-business h3 {
-  color: #ffffff;
+.prose-business h3,
+.prose-business strong {
+  color: var(--md-sys-color-on-surface);
 }
 
 .prose-business table {
@@ -31,10 +64,11 @@ body {
 
 .prose-business th,
 .prose-business td {
-  border: 1px solid #24304d;
-  padding: 0.75rem;
+  border: 1px solid rgba(202, 196, 208, 0.16);
+  padding: 0.875rem;
+  vertical-align: top;
 }
 
 .prose-business th {
-  background: #141c31;
+  background: var(--md-sys-color-surface-container-high);
 }
