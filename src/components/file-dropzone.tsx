@@ -10,9 +10,11 @@ type FileDropzoneProps = {
   onFilesChange: (files: File[]) => void;
   multiple?: boolean;
   maxFiles?: number;
+  title: string;
+  description: string;
 };
 
-export function FileDropzone({ files, onFilesChange, multiple = false, maxFiles = 1 }: FileDropzoneProps) {
+export function FileDropzone({ files, onFilesChange, multiple = false, maxFiles = 1, title, description }: FileDropzoneProps) {
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       const nextFiles = multiple ? [...files, ...acceptedFiles].slice(0, maxFiles) : acceptedFiles.slice(0, 1);
@@ -41,8 +43,8 @@ export function FileDropzone({ files, onFilesChange, multiple = false, maxFiles 
         <div className="mb-5 grid h-16 w-16 place-items-center rounded-3xl bg-[#a8c7fa]/14 text-[#a8c7fa] transition group-hover:scale-105">
           <UploadCloud className="h-8 w-8" />
         </div>
-        <p className="text-xl font-medium tracking-[-0.01em] text-[#e6e1e5]">Sube documentos PDF</p>
-        <p className="mt-2 max-w-md text-sm leading-6 text-[#cac4d0]">Arrastra archivos o haz clic para seleccionarlos. Tus PDFs se guardan temporalmente y solo se analizan después del pago aprobado.</p>
+        <p className="text-xl font-medium tracking-[-0.01em] text-[#e6e1e5]">{title}</p>
+        <p className="mt-2 max-w-md text-sm leading-6 text-[#cac4d0]">{description}</p>
       </div>
       {files.length > 0 && (
         <div className="grid gap-3">
