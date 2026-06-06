@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: #070b14;
+  color: #eef2ff;
+}
+
+.prose-business {
+  color: #dbe4ff;
+}
+
+.prose-business h1,
+.prose-business h2,
+.prose-business h3 {
+  color: #ffffff;
+}
+
+.prose-business table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border-radius: 1rem;
+}
+
+.prose-business th,
+.prose-business td {
+  border: 1px solid #24304d;
+  padding: 0.75rem;
+}
+
+.prose-business th {
+  background: #141c31;
+}
