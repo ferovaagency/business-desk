@@ -4,9 +4,9 @@ import { requireUser } from "@/lib/api-auth";
 import { adminDb } from "@/lib/firebase-admin";
 import { generateBusinessAnalysis } from "@/lib/gemini";
 import { extractPdfTextFromBuffer } from "@/lib/pdf";
-import { CONTRACT_REVIEW_PROMPT, PROPOSAL_COMPARISON_PROMPT } from "@/lib/prompts";
+import { buildStructuredAnalysisPrompt } from "@/lib/prompts";
 import { downloadTemporaryPdf, uploadTemporaryPdf } from "@/lib/storage";
-import type { AnalysisType } from "@/lib/types";
+import type { AnalysisContext, AnalysisType, ContractType, ContractUserRole, StructuredAnalysisResult, SupportedCountry } from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -15,6 +15,27 @@ const STEP_TIMEOUT_MS = 120000;
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
+}
+
+function parseStructuredResult(raw: string, context: AnalysisContext, type: AnalysisType): StructuredAnalysisResult {
+  const clean = raw.trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
+  const parsed = JSON.parse(clean) as Partial<StructuredAnalysisResult>;
+  const ensureArray = (value: unknown) => Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [];
+
+  return {
+    summary: typeof parsed.summary === "string" ? parsed.summary : "Análisis generado correctamente.",
+    correct: ensureArray(parsed.correct),
+    riskPartyOne: ensureArray(parsed.riskPartyOne),
+    riskPartyTwo: ensureArray(parsed.riskPartyTwo),
+    protection: ensureArray(parsed.protection),
+    missing: ensureArray(parsed.missing),
+    metadata: {
+      country: parsed.metadata?.country ?? context.country,
+      userRole: parsed.metadata?.userRole ?? context.userRole,
+      contractType: parsed.metadata?.contractType ?? context.contractType,
+      analysisType: type,
+    },
+  };
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
@@ -37,6 +58,13 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const type = formData.get("type") as AnalysisType | null;
     const promoCode = String(formData.get("promoCode") ?? "");
+    const context: AnalysisContext = {
+      country: (String(formData.get("country") ?? "CO") || "CO") as SupportedCountry,
+      userRole: String(formData.get("userRole") ?? "") as ContractUserRole || undefined,
+      contractType: String(formData.get("contractType") ?? "") as ContractType || undefined,
+      userContext: String(formData.get("userContext") ?? "").trim(),
+      companyContext: String(formData.get("companyContext") ?? "").trim(),
+    };
     const files = formData.getAll("files").filter((file): file is File => file instanceof File);
     console.log(`[PayPal API][${requestId}] Authenticated uid=${user.uid} type=${type} files=${files.length} promo=${promoCode === "MAFE_DEV_2026" ? "valid-test-code" : "standard"}`);
 
@@ -50,6 +78,18 @@ export async function POST(request: NextRequest) {
 
     if (type === "proposals" && (files.length < 2 || files.length > 4)) {
       return NextResponse.json({ error: "Upload between 2 and 4 proposal PDFs." }, { status: 400 });
+    }
+
+    if (context.country !== "CO") {
+      return NextResponse.json({ error: "País no soportado todavía." }, { status: 400 });
+    }
+
+    if (type === "contract" && (!context.userRole || !context.contractType)) {
+      return NextResponse.json({ error: "Completa tu rol y el tipo de contrato antes de analizar." }, { status: 400 });
+    }
+
+    if (type === "proposals" && !context.companyContext) {
+      return NextResponse.json({ error: "Completa el contexto de tu empresa y objetivo antes de analizar propuestas." }, { status: 400 });
     }
 
     console.log(`[PayPal API][${requestId}] Uploading files to storage`, files.map((file) => ({ name: file.name, size: file.size, type: file.type })));
@@ -69,6 +109,7 @@ export async function POST(request: NextRequest) {
         amount: ANALYSIS_PRICE_USD,
         currency: "USD",
         provider: "paypal-prototype",
+        context,
         storagePaths,
         fileNames: files.map((file) => file.name),
         createdAt: FieldValue.serverTimestamp(),
@@ -95,11 +136,12 @@ export async function POST(request: NextRequest) {
         }),
       );
 
-      const prompt = type === "contract" ? CONTRACT_REVIEW_PROMPT : PROPOSAL_COMPARISON_PROMPT;
+      const prompt = buildStructuredAnalysisPrompt(type, context);
       const content = type === "contract" ? sections[0] : sections.join("\n\n---\n\n");
       console.log(`[PayPal API][${requestId}] Sending content to Gemini chars=${content.length}`);
-      const result = await withTimeout(generateBusinessAnalysis(prompt, content), STEP_TIMEOUT_MS + 15000, "La generación del informe con Gemini");
-      console.log(`[PayPal API][${requestId}] Gemini completed resultChars=${result.length}`);
+      const rawResult = await withTimeout(generateBusinessAnalysis(prompt, content), STEP_TIMEOUT_MS + 15000, "La generación del informe con Gemini");
+      const result = parseStructuredResult(rawResult, context, type);
+      console.log(`[PayPal API][${requestId}] Gemini completed resultChars=${rawResult.length}`);
 
       await withTimeout(analysisRef.update({
         result,
