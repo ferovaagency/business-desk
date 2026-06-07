@@ -22,6 +22,7 @@ type ResultState = {
 
 const PAYPAL_URL = "https://www.paypal.com/ncp/payment/34PTNK5D9Z8KS";
 const PRICE_LABEL = "$10 USD";
+const ANALYSIS_TIMEOUT_MS = 180000;
 
 const copy = {
   es: {
@@ -161,6 +162,7 @@ export function Dashboard() {
     if (promoCode === "MAFE_DEV_2026") {
       const type = view === "history" ? (contractFiles.length ? "contract" : "proposals") : view;
       const files = view === "contract" ? contractFiles : proposalFiles;
+      setView("history");
       confirmPaymentAndAnalyze(type, files);
       return;
     }
@@ -178,13 +180,18 @@ export function Dashboard() {
   }
 
   async function confirmPaymentAndAnalyze(type: AnalysisType, files: File[]) {
-    if (!user) return;
+    if (!user) {
+      setBusy(false);
+      return;
+    }
     setPaymentStage("processing");
     setError("");
     setResultState({ status: "processing" });
 
     try {
       const token = await user.getIdToken();
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), ANALYSIS_TIMEOUT_MS);
       const formData = new FormData();
       formData.append("type", type);
       files.forEach((file) => formData.append("files", file));
@@ -194,20 +201,30 @@ export function Dashboard() {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
-      });
-      const data = await response.json();
+        signal: controller.signal,
+      }).finally(() => window.clearTimeout(timeoutId));
+      const data = await response.json().catch(() => ({ error: t.analysisError }));
 
       if (!response.ok) {
         setResultState({ id: data.analysisId, status: data.status ?? "failed", error: data.error ?? t.analysisError });
         setError(data.error ?? t.analysisError);
+        setPaymentStage("idle");
         return;
       }
 
       setResultState({ id: data.analysisId, status: data.status, result: data.result });
       setPaymentStage("idle");
-    } catch {
-      setResultState({ status: "failed", error: t.analysisError });
-      setError(t.analysisError);
+    } catch (error) {
+      const message = error instanceof DOMException && error.name === "AbortError"
+        ? "El análisis tardó demasiado y fue cancelado. Intenta con un PDF más corto o revisa los logs."
+        : error instanceof Error
+          ? error.message
+          : t.analysisError;
+      setResultState({ status: "failed", error: message });
+      setError(message);
+      setPaymentStage("idle");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -336,7 +353,8 @@ export function Dashboard() {
               )}
               {paymentStage === "processing" && <div className="mt-8 flex items-center gap-3 rounded-3xl bg-[#2b2930] p-5 text-sm text-[#d7e3f8]"><Loader2 className="h-5 w-5 animate-spin text-[#a8c7fa]" /> {t.generating}</div>}
               {!resultState && paymentStage === "idle" && <p className="mt-8 rounded-3xl bg-[#2b2930] p-5 text-sm text-[#cac4d0]">{t.emptyResult}</p>}
-              {resultState && resultState.status !== "completed" && resultState.status !== "processing" && <div className="mt-8 flex items-center gap-3 rounded-3xl bg-[#2b2930] p-5 text-sm text-[#d7e3f8]"><Loader2 className="h-5 w-5 animate-spin text-[#a8c7fa]" /> {t.status}: {resultState.status}. {t.autoUpdate}</div>}
+              {resultState?.status === "processing" && paymentStage !== "processing" && <div className="mt-8 flex items-center gap-3 rounded-3xl bg-[#2b2930] p-5 text-sm text-[#d7e3f8]"><Loader2 className="h-5 w-5 animate-spin text-[#a8c7fa]" /> {t.status}: {resultState.status}. {t.autoUpdate}</div>}
+              {resultState && resultState.status !== "completed" && resultState.status !== "processing" && !resultState.error && <div className="mt-8 rounded-3xl bg-[#2b2930] p-5 text-sm text-[#d7e3f8]">{t.status}: {resultState.status}</div>}
               {resultState?.error && <div className="mt-8 rounded-3xl bg-[#f2b8b5]/12 p-5 text-sm text-[#f2b8b5]">{resultState.error}</div>}
               {resultState?.result && <div className="mt-8"><MarkdownResult content={resultState.result} /></div>}
             </section>

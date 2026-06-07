@@ -24,7 +24,7 @@ function resolveServiceAccount(): ServiceAccount | undefined {
       return {
         projectId: json.project_id,
         clientEmail: json.client_email,
-        privateKey: json.private_key,
+        privateKey: normalizePrivateKey(json.private_key),
       };
     } catch (error) {
       console.error("[firebase-admin] FIREBASE_SERVICE_ACCOUNT_BASE64 inválido:", error);
@@ -49,7 +49,9 @@ function resolveServiceAccount(): ServiceAccount | undefined {
   // Opción 3: variables individuales
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
-  const privateKey = normalizePrivateKey(process.env.FIREBASE_ADMIN_PRIVATE_KEY);
+  const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY
+    ? process.env.FIREBASE_ADMIN_PRIVATE_KEY.replace(/\\n/g, "\n")
+    : undefined;
   if (projectId && clientEmail && privateKey) {
     return { projectId, clientEmail, privateKey };
   }
