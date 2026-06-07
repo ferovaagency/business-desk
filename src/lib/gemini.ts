@@ -6,8 +6,9 @@ export async function generateBusinessAnalysis(systemInstruction: string, conten
   }
 
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const model = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-pro",
+    model,
     contents: content,
     config: {
       systemInstruction,
