@@ -38,7 +38,7 @@ function createClient(): GoogleGenAI {
     return new GoogleGenAI({
       vertexai: true,
       project: vertexCreds.projectId,
-      location: process.env.GEMINI_LOCATION ?? "global",
+      location: process.env.GEMINI_LOCATION ?? "us-central1",
       googleAuthOptions: { credentials: vertexCreds.credentials },
     });
   }
@@ -53,16 +53,30 @@ function createClient(): GoogleGenAI {
   );
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Gemini no respondió en ${ms / 1000}s (timeout).`)), ms),
+    ),
+  ]);
+}
+
 export async function generateBusinessAnalysis(systemInstruction: string, content: string) {
   const ai = createClient();
   const model = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
-  const response = await ai.models.generateContent({
-    model,
-    contents: content,
-    config: {
-      systemInstruction,
-    },
-  });
+  const timeoutMs = Number(process.env.GEMINI_TIMEOUT_MS ?? 120000);
+
+  const response = await withTimeout(
+    ai.models.generateContent({
+      model,
+      contents: content,
+      config: {
+        systemInstruction,
+      },
+    }),
+    timeoutMs,
+  );
 
   return response.text ?? "No se pudo generar una respuesta.";
 }

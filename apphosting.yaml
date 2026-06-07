@@ -37,7 +37,7 @@ env:
     availability:
       - RUNTIME
   - variable: GEMINI_LOCATION
-    value: global
+    value: us-central1
     availability:
       - RUNTIME
   # Secreto: credenciales del service account (Secret Manager)
