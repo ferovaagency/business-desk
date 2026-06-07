@@ -4,9 +4,9 @@ import { requireUser } from "@/lib/api-auth";
 import { adminDb } from "@/lib/firebase-admin";
 import { generateBusinessAnalysis } from "@/lib/gemini";
 import { extractPdfTextFromBuffer } from "@/lib/pdf";
-import { buildStructuredAnalysisPrompt } from "@/lib/prompts";
 import { downloadTemporaryPdf, uploadTemporaryPdf } from "@/lib/storage";
-import type { AnalysisContext, AnalysisType, ContractType, ContractUserRole, StructuredAnalysisResult, SupportedCountry } from "@/lib/types";
+import { buildExpertisePrompt } from "@/expertise";
+import type { AnalysisContext, AnalysisType, ContractType, ContractUserRole, StructuredAnalysisResult, SupportedCountry, ExpertiseTool } from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -136,7 +136,8 @@ export async function POST(request: NextRequest) {
         }),
       );
 
-      const prompt = buildStructuredAnalysisPrompt(type, context);
+      const toolType: ExpertiseTool = type === "contract" ? "legal" : "financial";
+      const prompt = buildExpertisePrompt(context.country, toolType, context, type);
       const content = type === "contract" ? sections[0] : sections.join("\n\n---\n\n");
       console.log(`[PayPal API][${requestId}] Sending content to Gemini chars=${content.length}`);
       const rawResult = await withTimeout(generateBusinessAnalysis(prompt, content), STEP_TIMEOUT_MS + 15000, "La generación del informe con Gemini");

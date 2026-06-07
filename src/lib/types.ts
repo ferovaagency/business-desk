@@ -1,7 +1,9 @@
 ﻿export type AnalysisType = "contract" | "proposals";
-export type SupportedCountry = "CO";
+export type SupportedCountry = "CO" | "US" | "BR";
 export type ContractUserRole = "issuer" | "receiver";
 export type ContractType = "lease" | "business_alliance" | "credit_card_or_credit" | "purchase_sale" | "other";
+
+export type ExpertiseTool = "legal" | "financial" | "tax" | "hr";
 
 export type AnalysisStatus = "awaiting_payment" | "processing" | "completed" | "failed";
 
