@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, BriefcaseBusiness, CheckCircle2, Clock3, FileSearch, Languages, Loader2, LogOut, Scale, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, CheckCircle2, Clock3, FileSearch, Languages, Loader2, LogOut, MessageCircle, Scale, ShieldCheck, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AnalysisCards } from "@/components/analysis-cards";
@@ -10,7 +10,7 @@ import { MarkdownResult } from "@/components/markdown-result";
 import { cn } from "@/lib/utils";
 import type { AnalysisContext, AnalysisType, ContractType, ContractUserRole, StructuredAnalysisResult, SupportedCountry } from "@/lib/types";
 
-type View = "contract" | "proposals" | "history";
+type View = "contract" | "proposals" | "history" | "support";
 type Locale = "es" | "en";
 type PaymentStage = "idle" | "paypal-opened" | "processing";
 
@@ -65,6 +65,8 @@ const copy = {
     proposalsDescription: "Evalúa ofertas y recomienda una opción",
     history: "Resultado",
     historyDescription: "Consulta el análisis pagado",
+    support: "Soporte",
+    supportDescription: "Contacto y facturación",
     geminiAgent: "GEMINI AGENT",
     contractIntro: "Sube un contrato en PDF. Gemini identifica riesgos, fechas clave, obligaciones y recomendaciones accionables.",
     proposalsIntro: "Sube entre 2 y 4 propuestas. Gemini genera una matriz comparativa y una recomendación ejecutiva.",
@@ -88,6 +90,19 @@ const copy = {
     autoUpdate: "Esta pantalla se actualiza automáticamente.",
     paymentError: "No se pudo iniciar el pago. Revisa la conexión e inténtalo de nuevo.",
     analysisError: "No se pudo generar el informe con Gemini.",
+    supportTitle: "Soporte y Contacto",
+    supportInfo: "PayPal envía automáticamente un recibo a tu correo. Si necesitas un Invoice corporativo formal a nombre de Ferova o tienes un problema técnico, escríbenos por aquí.",
+    supportEmail: "soporte@ferova.com.co",
+    supportCategoryLabel: "Tipo de Solicitud",
+    supportCategoryInvoice: "Solicitar Factura / Invoice",
+    supportCategoryTechnical: "Problema Técnico",
+    supportCategoryGeneral: "Duda o Sugerencia",
+    supportSubjectLabel: "Asunto",
+    supportSubjectPlaceholder: "Breve descripción del tema",
+    supportMessageLabel: "Mensaje",
+    supportMessagePlaceholder: "Describe tu solicitud en detalle...",
+    supportSubmit: "Enviar Mensaje",
+    supportSuccess: "¡Mensaje enviado! Te responderemos en menos de 24 horas.",
   },
   en: {
     loading: "Loading Business Desk",
@@ -107,6 +122,8 @@ const copy = {
     proposalsDescription: "Evaluate offers and recommend one",
     history: "Result",
     historyDescription: "View the paid analysis",
+    support: "Support",
+    supportDescription: "Contact and billing",
     geminiAgent: "GEMINI AGENT",
     contractIntro: "Upload a contract PDF. Gemini identifies risks, key dates, obligations and actionable recommendations.",
     proposalsIntro: "Upload 2 to 4 proposals. Gemini generates a comparison matrix and executive recommendation.",
@@ -130,6 +147,19 @@ const copy = {
     autoUpdate: "This screen updates automatically.",
     paymentError: "Could not start the payment. Check the connection and try again.",
     analysisError: "Could not generate the Gemini report.",
+    supportTitle: "Support & Contact",
+    supportInfo: "PayPal automatically sends a receipt to your email. If you need a formal corporate Invoice in Ferova's name or have a technical issue, write to us here.",
+    supportEmail: "soporte@ferova.com.co",
+    supportCategoryLabel: "Request Type",
+    supportCategoryInvoice: "Request Invoice",
+    supportCategoryTechnical: "Technical Issue",
+    supportCategoryGeneral: "Question or Suggestion",
+    supportSubjectLabel: "Subject",
+    supportSubjectPlaceholder: "Brief description of the topic",
+    supportMessageLabel: "Message",
+    supportMessagePlaceholder: "Describe your request in detail...",
+    supportSubmit: "Submit Ticket",
+    supportSuccess: "Message sent! We will reply within 24 hours.",
   },
 } satisfies Record<Locale, Record<string, string>>;
 
@@ -151,6 +181,10 @@ export function Dashboard() {
   const [contractType, setContractType] = useState<ContractType>("lease");
   const [userContext, setUserContext] = useState("");
   const [companyContext, setCompanyContext] = useState("");
+  const [supportCategory, setSupportCategory] = useState<"invoice" | "technical" | "general">("invoice");
+  const [supportSubject, setSupportSubject] = useState("");
+  const [supportMessage, setSupportMessage] = useState("");
+  const [supportSent, setSupportSent] = useState(false);
   const t = copy[locale];
 
   // Redirigir a / si no está autenticado
@@ -173,6 +207,7 @@ export function Dashboard() {
       { id: "contract" as const, label: t.contract, icon: Scale, description: t.contractDescription },
       { id: "proposals" as const, label: t.proposals, icon: BriefcaseBusiness, description: t.proposalsDescription },
       { id: "history" as const, label: t.history, icon: Clock3, description: t.historyDescription },
+      { id: "support" as const, label: t.support, icon: MessageCircle, description: t.supportDescription },
     ],
     [t],
   );
@@ -194,8 +229,8 @@ export function Dashboard() {
     setResultState(null);
 
     if (promoCode === "MAFE_DEV_2026") {
-      const type = view === "history" ? (contractFiles.length ? "contract" : "proposals") : view;
-      const files = view === "contract" ? contractFiles : proposalFiles;
+      const type = view === "history" ? (contractFiles.length ? "contract" : "proposals") : view === "support" ? "contract" : view;
+      const files = view === "contract" ? contractFiles : view === "proposals" ? proposalFiles : contractFiles;
       setView("history");
       confirmPaymentAndAnalyze(type, files, buildContext(type));
       return;
@@ -203,7 +238,8 @@ export function Dashboard() {
 
     try {
       window.open(PAYPAL_URL, "_blank", "noopener,noreferrer");
-      setPendingAnalysisType(view === "history" ? null : view);
+      const pendingType = view === "history" || view === "support" ? null : view;
+      setPendingAnalysisType(pendingType);
       setPaymentStage("paypal-opened");
       setView("history");
       setBusy(false);
@@ -429,6 +465,68 @@ export function Dashboard() {
               {resultState && resultState.status !== "completed" && resultState.status !== "processing" && !resultState.error && <div className="mt-8 rounded-3xl bg-[#2b2930] p-5 text-sm text-[#d7e3f8]">{t.status}: {resultState.status}</div>}
               {resultState?.error && <div className="mt-8 rounded-3xl bg-[#f2b8b5]/12 p-5 text-sm text-[#f2b8b5]">{resultState.error}</div>}
               {resultState?.result && <div className="mt-8">{isStructuredResult(resultState.result) ? <AnalysisCards result={resultState.result} /> : <MarkdownResult content={resultState.result} />}</div>}
+            </section>
+          )}
+
+          {view === "support" && (
+            <section className="rounded-[2rem] bg-[#1c1b1f] p-8 shadow-[0_6px_18px_rgba(0,0,0,0.36)] ring-1 ring-[#cac4d0]/10">
+              <div className="flex items-center gap-4">
+                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#a8c7fa]/12 text-[#a8c7fa]"><MessageCircle className="h-6 w-6" /></div>
+                <div>
+                  <h3 className="text-3xl font-medium tracking-[-0.03em] text-[#e6e1e5]">{t.supportTitle}</h3>
+                  <p className="mt-1 text-sm text-[#cac4d0]">{t.supportDescription}</p>
+                </div>
+              </div>
+              <div className="mt-8 grid gap-8 md:grid-cols-2">
+                <div className="rounded-[1.75rem] bg-[#2b2930] p-6 ring-1 ring-[#cac4d0]/10">
+                  <p className="text-sm leading-7 text-[#cac4d0]">{t.supportInfo}</p>
+                  <p className="mt-4 text-sm font-medium text-[#d7e3f8]">{t.supportEmail}</p>
+                </div>
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!user) return;
+                  try {
+                    const { getFirestore, collection, addDoc, serverTimestamp } = await import("firebase/firestore");
+                    const db = getFirestore();
+                    await addDoc(collection(db, "support_tickets"), {
+                      userId: user.uid,
+                      userEmail: user.email,
+                      category: supportCategory,
+                      subject: supportSubject,
+                      message: supportMessage,
+                      createdAt: serverTimestamp(),
+                    });
+                    setSupportSent(true);
+                    setSupportCategory("invoice");
+                    setSupportSubject("");
+                    setSupportMessage("");
+                    setTimeout(() => setSupportSent(false), 5000);
+                  } catch {
+                    console.error("Failed to submit support ticket");
+                  }
+                }} className="space-y-4">
+                  <label className="space-y-2 text-sm font-medium text-[#e6e1e5]">
+                    {t.supportCategoryLabel}
+                    <select value={supportCategory} onChange={(e) => setSupportCategory(e.target.value as "invoice" | "technical" | "general")} className="h-12 w-full rounded-2xl border border-[#938f99]/25 bg-[#1c1b1f] px-4 text-sm text-[#e6e1e5] focus:border-[#a8c7fa] focus:outline-none focus:ring-2 focus:ring-[#a8c7fa]/20">
+                      <option value="invoice">{t.supportCategoryInvoice}</option>
+                      <option value="technical">{t.supportCategoryTechnical}</option>
+                      <option value="general">{t.supportCategoryGeneral}</option>
+                    </select>
+                  </label>
+                  <label className="space-y-2 text-sm font-medium text-[#e6e1e5]">
+                    {t.supportSubjectLabel}
+                    <input type="text" value={supportSubject} onChange={(e) => setSupportSubject(e.target.value)} placeholder={t.supportSubjectPlaceholder} className="h-12 w-full rounded-2xl border border-[#938f99]/25 bg-[#1c1b1f] px-4 text-sm text-[#e6e1e5] placeholder:text-[#cac4d0]/50 focus:border-[#a8c7fa] focus:outline-none focus:ring-2 focus:ring-[#a8c7fa]/20" />
+                  </label>
+                  <label className="space-y-2 text-sm font-medium text-[#e6e1e5]">
+                    {t.supportMessageLabel}
+                    <textarea value={supportMessage} onChange={(e) => setSupportMessage(e.target.value)} rows={4} placeholder={t.supportMessagePlaceholder} className="w-full resize-none rounded-2xl border border-[#938f99]/25 bg-[#1c1b1f] px-4 py-3 text-sm text-[#e6e1e5] placeholder:text-[#cac4d0]/50 focus:border-[#a8c7fa] focus:outline-none focus:ring-2 focus:ring-[#a8c7fa]/20" />
+                  </label>
+                  <button type="submit" className="inline-flex h-14 w-full items-center justify-center gap-3 rounded-full bg-[#a8c7fa] px-7 text-sm font-bold text-[#062e6f] shadow-[0_2px_8px_rgba(168,199,250,0.22)] transition hover:bg-[#d7e3f8] focus:outline-none focus:ring-4 focus:ring-[#a8c7fa]/20">
+                    <MessageCircle className="h-5 w-5" /> {t.supportSubmit}
+                  </button>
+                </form>
+              </div>
+              {supportSent && <div className="mt-6 rounded-3xl bg-[#6dd58c]/12 p-5 text-sm text-[#b8f7c7]">{t.supportSuccess}</div>}
             </section>
           )}
         </div>
