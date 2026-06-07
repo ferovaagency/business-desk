@@ -170,9 +170,9 @@ export function Dashboard() {
       setPendingAnalysisType(view === "history" ? null : view);
       setPaymentStage("paypal-opened");
       setView("history");
+      setBusy(false);
     } catch {
       setError(t.paymentError);
-    } finally {
       setBusy(false);
     }
   }
