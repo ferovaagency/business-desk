@@ -11,16 +11,26 @@ firebase login
 ```
 This will open a browser window for Google authentication.
 
-## Step 2: Configure Firebase Secrets
-Set the required secrets for the backend to work in production:
+## Step 2: Configure Environment Variables in Firebase Console
 
-```bash
-firebase apphosting:secrets:set GEMINI_API_KEY --project business-desk-498601
-firebase apphosting:secrets:set FIREBASE_ADMIN_CLIENT_EMAIL --project business-desk-498601
-firebase apphosting:secrets:set FIREBASE_ADMIN_PRIVATE_KEY --project business-desk-498601
-```
+Go to Firebase Console → App Hosting → your backend → Settings → Environment Variables
 
-When prompted, paste the values from your `.env.local` file.
+Set the following environment variables (copy values from your `.env.local` file):
+
+### Firebase Configuration (Public)
+- `NEXT_PUBLIC_FIREBASE_API_KEY`: Your Firebase API key
+- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`: Firebase auth domain
+- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`: Firebase project ID
+- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`: Firebase storage bucket
+- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`: Firebase messaging sender ID
+- `NEXT_PUBLIC_FIREBASE_APP_ID`: Firebase app ID
+
+### Backend Configuration (Private)
+- `GEMINI_API_KEY`: Your Google Gemini API key
+- `FIREBASE_ADMIN_CLIENT_EMAIL`: Firebase admin service account email
+- `FIREBASE_ADMIN_PRIVATE_KEY`: Firebase admin private key (full key with newlines - replace \n with actual newlines)
+
+**Important**: For `FIREBASE_ADMIN_PRIVATE_KEY`, ensure you paste the complete key including the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` lines with proper line breaks.
 
 ## Step 3: Deploy to Firebase App Hosting
 ```bash
@@ -30,7 +40,7 @@ firebase apphosting:deploy --project business-desk-498601
 This will:
 - Build the Next.js application
 - Deploy to Firebase App Hosting
-- Configure the secrets
+- Apply the environment variables
 - Provide the public URL
 
 ## Alternative: Firebase Functions + Hosting (if App Hosting is not available)
