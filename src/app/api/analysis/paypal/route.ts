@@ -88,14 +88,6 @@ export async function POST(request: NextRequest) {
 
     const countryForExpertise = normalizedCountry === "co" ? "colombia" : normalizedCountry;
 
-    if (type === "contract" && (!context.userRole || !context.contractType)) {
-      return NextResponse.json({ error: "Completa tu rol y el tipo de contrato antes de analizar." }, { status: 400 });
-    }
-
-    if (type === "proposals" && !context.companyContext) {
-      return NextResponse.json({ error: "Completa el contexto de tu empresa y objetivo antes de analizar propuestas." }, { status: 400 });
-    }
-
     console.log(`[PayPal API][${requestId}] Uploading files to storage`, files.map((file) => ({ name: file.name, size: file.size, type: file.type })));
     const storagePaths = await withTimeout(
       Promise.all(files.map((file) => uploadTemporaryPdf(user.uid, file))),

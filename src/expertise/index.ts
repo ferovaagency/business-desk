@@ -63,7 +63,15 @@ export function buildExpertisePrompt(
   const userRole = context.userRole ?? "No aplica";
   const contractType = context.contractType ?? "No aplica";
 
-  return basePrompt
+  const freeTextInstruction = `
+
+Instrucción crítica de flujo libre:
+Si el contexto del usuario es vago, incompleto o no incluye país, rol, fechas, tipo de contrato o condiciones específicas, NO rechaces la solicitud y NO devuelvas errores de validación.
+Genera un análisis preliminar con lo que puedas deducir del PDF y del texto libre del usuario.
+Utiliza obligatoriamente el campo "keyQuestions" de la respuesta JSON para listar exactamente 3 preguntas específicas que necesitas que el usuario responda para perfeccionar el blindaje.
+`;
+
+  return `${basePrompt}${freeTextInstruction}`
     .replace(/\{\{userRole\}\}/g, userRole)
     .replace(/\{\{contractType\}\}/g, contractType)
     .replace(/\{\{analysisType\}\}/g, analysisType);
