@@ -1,4 +1,4 @@
-﻿import { PDFParse } from "pdf-parse";
+﻿import { extractText, getDocumentProxy } from "unpdf";
 
 export async function extractPdfText(file: File) {
   const arrayBuffer = await file.arrayBuffer();
@@ -6,13 +6,8 @@ export async function extractPdfText(file: File) {
 }
 
 export async function extractPdfTextFromBuffer(buffer: Buffer) {
-  const parser = new PDFParse({ data: buffer });
-
-  try {
-    const result = await parser.getText();
-    return result.text.trim();
-  } finally {
-    await parser.destroy();
-  }
+  const pdf = await getDocumentProxy(new Uint8Array(buffer));
+  const { text } = await extractText(pdf, { mergePages: true });
+  return text.trim();
 }
 
