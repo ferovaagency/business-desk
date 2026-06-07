@@ -3,7 +3,22 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 
-const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n");
+function parsePrivateKey(key: string | undefined): string | undefined {
+  if (!key) return undefined;
+  
+  // Reemplazar \n con saltos de línea reales
+  let parsed = key.replace(/\\n/g, "\n");
+  
+  // Si aún no tiene saltos de línea, intentar otros formatos
+  if (!parsed.includes("\n")) {
+    // Intentar formato con |n|
+    parsed = parsed.replace(/\|n\|/g, "\n");
+  }
+  
+  return parsed;
+}
+
+const privateKey = parsePrivateKey(process.env.FIREBASE_ADMIN_PRIVATE_KEY);
 const hasServiceAccount = Boolean(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID && process.env.FIREBASE_ADMIN_CLIENT_EMAIL && privateKey);
 
 const options: AppOptions = {
@@ -12,11 +27,16 @@ const options: AppOptions = {
 };
 
 if (hasServiceAccount) {
-  options.credential = cert({
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-    privateKey,
-  });
+  try {
+    options.credential = cert({
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+      privateKey,
+    });
+  } catch (error) {
+    console.error("Error parsing Firebase admin credentials:", error);
+    // Continuar sin credenciales de servicio si falla
+  }
 }
 
 const adminApp = getApps().length ? getApps()[0] : initializeApp(options);
