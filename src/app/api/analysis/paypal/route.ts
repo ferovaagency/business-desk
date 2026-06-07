@@ -48,6 +48,10 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   ]);
 }
 
+function removeUndefinedValues<T extends Record<string, unknown>>(value: T): Partial<T> {
+  return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined)) as Partial<T>;
+}
+
 export async function POST(request: NextRequest) {
   const requestId = crypto.randomUUID();
   const startedAt = Date.now();
@@ -59,13 +63,13 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const type = formData.get("type") as AnalysisType | null;
     const promoCode = String(formData.get("promoCode") ?? "");
-    const context: AnalysisContext = {
+    const context: AnalysisContext = removeUndefinedValues({
       country: (String(formData.get("country") ?? "CO") || "CO") as SupportedCountry,
       userRole: String(formData.get("userRole") ?? "") as ContractUserRole || undefined,
       contractType: String(formData.get("contractType") ?? "") as ContractType || undefined,
       userContext: String(formData.get("userContext") ?? "").trim(),
       companyContext: String(formData.get("companyContext") ?? "").trim(),
-    };
+    }) as AnalysisContext;
     const files = formData.getAll("files").filter((file): file is File => file instanceof File);
     console.log(`[PayPal API][${requestId}] Authenticated uid=${user.uid} type=${type} files=${files.length} promo=${promoCode === "MAFE_DEV_2026" ? "valid-test-code" : "standard"}`);
 
