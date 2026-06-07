@@ -28,6 +28,7 @@ Formato exacto de respuesta:
   "riskPartyTwo": ["Riesgo para contratista/empleado/arrendatario o quien ejecuta"],
   "protection": ["Recomendación exacta para proteger al usuario según su rol"],
   "missing": ["Elemento vital ausente que debería incluirse"],
+  "keyQuestions": ["Pregunta clave 1 basada en vacíos detectados", "Pregunta clave 2", "Pregunta clave 3"],
   "metadata": {
     "country": "Brasil",
     "userRole": "{{userRole}}",

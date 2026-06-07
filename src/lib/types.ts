@@ -31,6 +31,7 @@ export type StructuredAnalysisResult = {
   riskPartyTwo: string[];
   protection: string[];
   missing: string[];
+  keyQuestions: string[];
   metadata: {
     country: string;
     userRole?: string;

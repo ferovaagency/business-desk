@@ -91,8 +91,8 @@ const copy = {
     paymentError: "No se pudo iniciar el pago. Revisa la conexión e inténtalo de nuevo.",
     analysisError: "No se pudo generar el informe con Gemini.",
     supportTitle: "Soporte y Contacto",
-    supportInfo: "PayPal envía automáticamente un recibo a tu correo. Si necesitas un Invoice corporativo formal a nombre de Ferova o tienes un problema técnico, escríbenos por aquí.",
-    supportEmail: "soporte@ferova.com.co",
+    supportInfo: "PayPal envía automáticamente un recibo a tu correo. Si necesitas un Invoice corporativo formal a nombre de Ferova o tienes un problema técnico, escríbenos por aquí. Para solicitudes formales o invoices de Ferova, nuestro equipo te responderá desde gerencia@seoparaecommerce.co.",
+    supportEmail: "gerencia@seoparaecommerce.co",
     supportCategoryLabel: "Tipo de Solicitud",
     supportCategoryInvoice: "Solicitar Factura / Invoice",
     supportCategoryTechnical: "Problema Técnico",
@@ -148,8 +148,8 @@ const copy = {
     paymentError: "Could not start the payment. Check the connection and try again.",
     analysisError: "Could not generate the Gemini report.",
     supportTitle: "Support & Contact",
-    supportInfo: "PayPal automatically sends a receipt to your email. If you need a formal corporate Invoice in Ferova's name or have a technical issue, write to us here.",
-    supportEmail: "soporte@ferova.com.co",
+    supportInfo: "PayPal automatically sends a receipt to your email. If you need a formal corporate Invoice in Ferova's name or have a technical issue, write to us here. For formal requests or Ferova invoices, our team will reply from gerencia@seoparaecommerce.co.",
+    supportEmail: "gerencia@seoparaecommerce.co",
     supportCategoryLabel: "Request Type",
     supportCategoryInvoice: "Request Invoice",
     supportCategoryTechnical: "Technical Issue",
@@ -177,10 +177,7 @@ export function Dashboard() {
   const [error, setError] = useState("");
   const [promoCode, setPromoCode] = useState("");
   const [country, setCountry] = useState<SupportedCountry>("CO");
-  const [userRole, setUserRole] = useState<ContractUserRole>("issuer");
-  const [contractType, setContractType] = useState<ContractType>("lease");
-  const [userContext, setUserContext] = useState("");
-  const [companyContext, setCompanyContext] = useState("");
+  const [contextText, setContextText] = useState("");
   const [supportCategory, setSupportCategory] = useState<"invoice" | "technical" | "general">("invoice");
   const [supportSubject, setSupportSubject] = useState("");
   const [supportMessage, setSupportMessage] = useState("");
@@ -213,14 +210,12 @@ export function Dashboard() {
   );
 
   const currentFiles = view === "contract" ? contractFiles : proposalFiles;
-  const validContext = view === "contract" ? Boolean(country && userRole && contractType) : Boolean(country && companyContext.trim());
+  const validContext = Boolean(contextText.trim());
   const validFiles = view === "contract" ? contractFiles.length === 1 : proposalFiles.length >= 2 && proposalFiles.length <= 4;
   const activeTool = nav.find((item) => item.id === view);
 
   function buildContext(type: AnalysisType): AnalysisContext {
-    return type === "contract"
-      ? { country, userRole, contractType, userContext: userContext.trim() }
-      : { country, companyContext: companyContext.trim() };
+    return { country, userContext: contextText.trim() };
   }
 
   function openPaypal() {
@@ -319,7 +314,7 @@ export function Dashboard() {
 
   return (
     <main className="min-h-screen text-[#e6e1e5]">
-      <aside className="fixed inset-y-0 left-0 hidden w-80 border-r border-[#cac4d0]/10 bg-[#1c1b1f]/88 px-4 py-6 shadow-[0_4px_16px_rgba(0,0,0,0.36)] backdrop-blur-xl lg:block">
+      <aside className="fixed inset-y-0 left-0 hidden h-full w-80 overflow-y-auto border-r border-[#cac4d0]/10 bg-[#1c1b1f]/88 px-4 py-6 shadow-[0_4px_16px_rgba(0,0,0,0.36)] backdrop-blur-xl lg:block">
         <div className="mb-8 flex items-center gap-3 px-3">
           <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#a8c7fa] text-[#062e6f]"><Sparkles className="h-5 w-5" /></div>
           <div>
@@ -367,7 +362,7 @@ export function Dashboard() {
         <div className="mx-auto max-w-6xl px-6 py-8 lg:px-10 lg:py-10">
           {error && <div className="mb-6 rounded-3xl bg-[#f2b8b5]/12 p-4 text-sm font-medium text-[#f2b8b5]">{error}</div>}
 
-          {view !== "history" && (
+          {(view === "contract" || view === "proposals") && (
             <section className="overflow-hidden rounded-[2rem] bg-[#1c1b1f] shadow-[0_6px_18px_rgba(0,0,0,0.36)] ring-1 ring-[#cac4d0]/10">
               <div className="grid gap-6 border-b border-[#cac4d0]/10 p-7 md:grid-cols-[1fr_auto] md:p-9">
                 <div>
@@ -384,38 +379,17 @@ export function Dashboard() {
               </div>
 
               <div className="space-y-6 p-7 md:p-9">
-                <div className="grid gap-4 rounded-[1.75rem] bg-[#2b2930] p-5 ring-1 ring-[#cac4d0]/10 md:grid-cols-2">
+                <div className="grid gap-4 rounded-[1.75rem] bg-[#2b2930] p-5 ring-1 ring-[#cac4d0]/10">
                   <label className="space-y-2 text-sm font-medium text-[#e6e1e5]">
                     País de Aplicación Legislativa
                     <select value={country} onChange={(e) => setCountry(e.target.value as SupportedCountry)} className="h-12 w-full rounded-2xl border border-[#938f99]/25 bg-[#1c1b1f] px-4 text-sm text-[#e6e1e5] focus:border-[#a8c7fa] focus:outline-none focus:ring-2 focus:ring-[#a8c7fa]/20">
                       {COUNTRY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </select>
                   </label>
-                  {view === "contract" ? (
-                    <>
-                      <label className="space-y-2 text-sm font-medium text-[#e6e1e5]">
-                        Tu Rol
-                        <select value={userRole} onChange={(e) => setUserRole(e.target.value as ContractUserRole)} className="h-12 w-full rounded-2xl border border-[#938f99]/25 bg-[#1c1b1f] px-4 text-sm text-[#e6e1e5] focus:border-[#a8c7fa] focus:outline-none focus:ring-2 focus:ring-[#a8c7fa]/20">
-                          {ROLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                        </select>
-                      </label>
-                      <label className="space-y-2 text-sm font-medium text-[#e6e1e5]">
-                        Tipo de Contrato
-                        <select value={contractType} onChange={(e) => setContractType(e.target.value as ContractType)} className="h-12 w-full rounded-2xl border border-[#938f99]/25 bg-[#1c1b1f] px-4 text-sm text-[#e6e1e5] focus:border-[#a8c7fa] focus:outline-none focus:ring-2 focus:ring-[#a8c7fa]/20">
-                          {CONTRACT_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                        </select>
-                      </label>
-                      <label className="space-y-2 text-sm font-medium text-[#e6e1e5] md:col-span-2">
-                        Contexto adicional (¿Hay algún acuerdo previo o punto que te preocupe especialmente?)
-                        <textarea value={userContext} onChange={(e) => setUserContext(e.target.value)} rows={4} className="w-full resize-none rounded-2xl border border-[#938f99]/25 bg-[#1c1b1f] px-4 py-3 text-sm text-[#e6e1e5] placeholder:text-[#cac4d0]/50 focus:border-[#a8c7fa] focus:outline-none focus:ring-2 focus:ring-[#a8c7fa]/20" placeholder="Opcional: describe preocupaciones, acuerdos previos o puntos sensibles." />
-                      </label>
-                    </>
-                  ) : (
-                    <label className="space-y-2 text-sm font-medium text-[#e6e1e5] md:col-span-2">
-                      ¿A qué se dedica tu empresa y cuál es el objetivo o servicio que buscas evaluar en estas propuestas?
-                      <textarea value={companyContext} onChange={(e) => setCompanyContext(e.target.value)} rows={4} className="w-full resize-none rounded-2xl border border-[#938f99]/25 bg-[#1c1b1f] px-4 py-3 text-sm text-[#e6e1e5] placeholder:text-[#cac4d0]/50 focus:border-[#a8c7fa] focus:outline-none focus:ring-2 focus:ring-[#a8c7fa]/20" placeholder="Ej: Somos una empresa de servicios B2B y queremos elegir el proveedor con mejor relación costo-beneficio para..." />
-                    </label>
-                  )}
+                  <label className="space-y-2 text-sm font-medium text-[#e6e1e5] md:col-span-2">
+                    Contexto del Documento
+                    <textarea value={contextText} onChange={(e) => setContextText(e.target.value)} rows={5} className="w-full resize-none rounded-2xl border border-[#938f99]/25 bg-[#1c1b1f] px-4 py-3 text-sm text-[#e6e1e5] placeholder:text-[#cac4d0]/50 focus:border-[#a8c7fa] focus:outline-none focus:ring-2 focus:ring-[#a8c7fa]/20" placeholder="Describe los detalles, objetivos y lo que buscas con el documento. Ej: Soy el arrendador y quiero asegurar que el contrato incluya cláusulas de penalización por mora..." />
+                  </label>
                 </div>
                 {view === "contract" ? (
                   <FileDropzone files={contractFiles} onFilesChange={setContractFiles} title={t.dropzoneTitle} description={t.dropzoneDescription} />
@@ -494,6 +468,8 @@ export function Dashboard() {
                       category: supportCategory,
                       subject: supportSubject,
                       message: supportMessage,
+                      notificationEmail: "gerencia@seoparaecommerce.co",
+                      sourcePlatform: "Business Desk",
                       createdAt: serverTimestamp(),
                     });
                     setSupportSent(true);

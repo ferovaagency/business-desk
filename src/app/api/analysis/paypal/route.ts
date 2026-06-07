@@ -29,6 +29,7 @@ function parseStructuredResult(raw: string, context: AnalysisContext, type: Anal
     riskPartyTwo: ensureArray(parsed.riskPartyTwo),
     protection: ensureArray(parsed.protection),
     missing: ensureArray(parsed.missing),
+    keyQuestions: ensureArray(parsed.keyQuestions),
     metadata: {
       country: parsed.metadata?.country ?? context.country,
       userRole: parsed.metadata?.userRole ?? context.userRole,
@@ -80,9 +81,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Upload between 2 and 4 proposal PDFs." }, { status: 400 });
     }
 
-    if (context.country !== "CO") {
+    const normalizedCountry = context.country.toLowerCase();
+    if (normalizedCountry !== "co" && normalizedCountry !== "colombia") {
       return NextResponse.json({ error: "País no soportado todavía." }, { status: 400 });
     }
+
+    const countryForExpertise = normalizedCountry === "co" ? "colombia" : normalizedCountry;
 
     if (type === "contract" && (!context.userRole || !context.contractType)) {
       return NextResponse.json({ error: "Completa tu rol y el tipo de contrato antes de analizar." }, { status: 400 });
@@ -137,7 +141,7 @@ export async function POST(request: NextRequest) {
       );
 
       const toolType: ExpertiseTool = type === "contract" ? "legal" : "financial";
-      const prompt = buildExpertisePrompt(context.country, toolType, context, type);
+      const prompt = buildExpertisePrompt(countryForExpertise, toolType, context, type);
       const content = type === "contract" ? sections[0] : sections.join("\n\n---\n\n");
       console.log(`[PayPal API][${requestId}] Sending content to Gemini chars=${content.length}`);
       const rawResult = await withTimeout(generateBusinessAnalysis(prompt, content), STEP_TIMEOUT_MS + 15000, "La generación del informe con Gemini");
