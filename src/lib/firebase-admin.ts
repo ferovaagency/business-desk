@@ -1,42 +1,77 @@
-import { cert, getApps, initializeApp, type AppOptions } from "firebase-admin/app";
+import { cert, getApps, initializeApp, type AppOptions, type ServiceAccount } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 
-function parsePrivateKey(key: string | undefined): string | undefined {
+function normalizePrivateKey(key: string | undefined): string | undefined {
   if (!key) return undefined;
-  
-  // Reemplazar \n con saltos de línea reales
-  let parsed = key.replace(/\\n/g, "\n");
-  
-  // Si aún no tiene saltos de línea, intentar otros formatos
-  if (!parsed.includes("\n")) {
-    // Intentar formato con |n|
-    parsed = parsed.replace(/\|n\|/g, "\n");
+  let parsed = key.trim();
+  // Quitar comillas envolventes si las hay
+  if ((parsed.startsWith('"') && parsed.endsWith('"')) || (parsed.startsWith("'") && parsed.endsWith("'"))) {
+    parsed = parsed.slice(1, -1);
   }
-  
+  // Convertir secuencias escapadas a saltos de línea reales
+  parsed = parsed.replace(/\\n/g, "\n").replace(/\|n\|/g, "\n");
   return parsed;
 }
 
-const privateKey = parsePrivateKey(process.env.FIREBASE_ADMIN_PRIVATE_KEY);
-const hasServiceAccount = Boolean(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID && process.env.FIREBASE_ADMIN_CLIENT_EMAIL && privateKey);
+function resolveServiceAccount(): ServiceAccount | undefined {
+  // Opción 1 (recomendada): JSON completo del service account en base64
+  const base64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
+  if (base64) {
+    try {
+      const json = JSON.parse(Buffer.from(base64, "base64").toString("utf8"));
+      return {
+        projectId: json.project_id,
+        clientEmail: json.client_email,
+        privateKey: json.private_key,
+      };
+    } catch (error) {
+      console.error("[firebase-admin] FIREBASE_SERVICE_ACCOUNT_BASE64 inválido:", error);
+    }
+  }
+
+  // Opción 2: JSON completo del service account en texto plano
+  const rawJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (rawJson) {
+    try {
+      const json = JSON.parse(rawJson);
+      return {
+        projectId: json.project_id,
+        clientEmail: json.client_email,
+        privateKey: normalizePrivateKey(json.private_key),
+      };
+    } catch (error) {
+      console.error("[firebase-admin] FIREBASE_SERVICE_ACCOUNT inválido:", error);
+    }
+  }
+
+  // Opción 3: variables individuales
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
+  const privateKey = normalizePrivateKey(process.env.FIREBASE_ADMIN_PRIVATE_KEY);
+  if (projectId && clientEmail && privateKey) {
+    return { projectId, clientEmail, privateKey };
+  }
+
+  return undefined;
+}
+
+const serviceAccount = resolveServiceAccount();
 
 const options: AppOptions = {
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  projectId: serviceAccount?.projectId ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
 };
 
-if (hasServiceAccount) {
+if (serviceAccount) {
   try {
-    options.credential = cert({
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-      privateKey,
-    });
+    options.credential = cert(serviceAccount);
   } catch (error) {
-    console.error("Error parsing Firebase admin credentials:", error);
-    // Continuar sin credenciales de servicio si falla
+    console.error("[firebase-admin] No se pudieron cargar las credenciales del service account:", error);
   }
+} else {
+  console.warn("[firebase-admin] No hay credenciales de service account configuradas. Las operaciones de Admin (Storage/Firestore) fallarán.");
 }
 
 const adminApp = getApps().length ? getApps()[0] : initializeApp(options);

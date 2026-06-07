@@ -1,40 +1,38 @@
-﻿@tailwind base;
-@tailwind components;
-@tailwind utilities;
+﻿@import "tailwindcss";
 
-:root {
-  --background: 222 47% 7%;
-  --foreground: 210 40% 98%;
-  --card: 222 47% 10%;
-  --card-foreground: 210 40% 98%;
-  --popover: 222 47% 7%;
-  --popover-foreground: 210 40% 98%;
-  --primary: 217 91% 82%;
-  --primary-foreground: 222 47% 11%;
-  --secondary: 217 32% 17%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 217 32% 17%;
-  --muted-foreground: 215 20% 65%;
-  --accent: 142 71% 73%;
-  --accent-foreground: 222 47% 11%;
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 217 32% 17%;
-  --input: 217 32% 17%;
-  --ring: 217 91% 82%;
+@theme {
+  --color-background: hsl(222 47% 7%);
+  --color-foreground: hsl(210 40% 98%);
+  --color-card: hsl(222 47% 10%);
+  --color-card-foreground: hsl(210 40% 98%);
+  --color-popover: hsl(222 47% 7%);
+  --color-popover-foreground: hsl(210 40% 98%);
+  --color-primary: hsl(217 91% 82%);
+  --color-primary-foreground: hsl(222 47% 11%);
+  --color-secondary: hsl(217 32% 17%);
+  --color-secondary-foreground: hsl(210 40% 98%);
+  --color-muted: hsl(217 32% 17%);
+  --color-muted-foreground: hsl(215 20% 65%);
+  --color-accent: hsl(142 71% 73%);
+  --color-accent-foreground: hsl(222 47% 11%);
+  --color-destructive: hsl(0 84% 60%);
+  --color-destructive-foreground: hsl(210 40% 98%);
+  --color-border: hsl(217 32% 17%);
+  --color-input: hsl(217 32% 17%);
+  --color-ring: hsl(217 91% 82%);
   --radius: 1.5rem;
 }
 
 body {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
+  background-color: var(--color-background);
+  color: var(--color-foreground);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 ::selection {
-  background-color: hsl(var(--primary) / 0.3);
-  color: hsl(var(--primary));
+  background-color: hsl(217 91% 82% / 0.3);
+  color: hsl(217 91% 82%);
 }
 
 h1, h2, h3, h4, h5, h6 {

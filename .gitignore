@@ -4,3 +4,9 @@ out
 .env*.local
 .env.local
 .DS_Store
+
+# Secretos / credenciales - nunca subir al repositorio
+FIREBASE_ADMIN_PRIVATE_KEY.txt
+FIREBASE_SERVICE_ACCOUNT_BASE64.txt
+*firebase-adminsdk*.json
+*.serviceaccount.json
