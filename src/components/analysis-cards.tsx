@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, Download, FileText, HelpCircle, ShieldCheck, Siren } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, FileText, HelpCircle, Loader2, ShieldCheck, Siren } from "lucide-react";
 import type { StructuredAnalysisResult } from "@/lib/types";
 
 function normalizeItems(items: string[] | undefined) {
@@ -51,7 +51,7 @@ function downloadPrintableReport(result: StructuredAnalysisResult) {
   printWindow.print();
 }
 
-export function AnalysisCards({ result }: { result: StructuredAnalysisResult }) {
+export function AnalysisCards({ result, questionAnswers, onAnswerChange, onRefine, isRefining }: { result: StructuredAnalysisResult; questionAnswers?: Record<string, string>; onAnswerChange?: (question: string, answer: string) => void; onRefine?: () => void; isRefining?: boolean }) {
   return (
     <article className="space-y-6">
       <div className="rounded-[1.75rem] border border-[#cac4d0]/12 bg-[#211f26] p-6 shadow-[0_1px_3px_rgba(0,0,0,0.28)]">
@@ -74,6 +74,34 @@ export function AnalysisCards({ result }: { result: StructuredAnalysisResult }) 
       </div>
 
       <Card title="🔍 Preguntas Clave para Refinar tu Blindaje" subtitle="Preguntas precisas basadas en vacíos detectados en el documento." items={normalizeItems(result.keyQuestions)} tone="blue" icon={<HelpCircle className="h-6 w-6" />} />
+
+      {onAnswerChange && result.keyQuestions.length > 0 && (
+        <div className="rounded-[1.75rem] border border-[#a8c7fa]/25 bg-[#a8c7fa]/10 p-6 shadow-[0_1px_3px_rgba(0,0,0,0.28)]">
+          <h4 className="mb-4 text-lg font-semibold text-[#d7e3f8]">Responde para refinar el análisis</h4>
+          <div className="space-y-4">
+            {result.keyQuestions.map((question, index) => (
+              <div key={index} className="space-y-2">
+                <label className="text-sm font-medium text-[#e6e1e5]">{question}</label>
+                <input
+                  type="text"
+                  value={questionAnswers?.[question] || ""}
+                  onChange={(e) => onAnswerChange?.(question, e.target.value)}
+                  placeholder="Tu respuesta..."
+                  className="w-full rounded-2xl border border-[#938f99]/25 bg-[#1c1b1f] px-4 py-3 text-sm text-[#e6e1e5] placeholder:text-[#cac4d0]/50 focus:border-[#a8c7fa] focus:outline-none focus:ring-2 focus:ring-[#a8c7fa]/20"
+                />
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={onRefine}
+            disabled={isRefining}
+            className="mt-6 inline-flex h-12 w-full items-center justify-center gap-3 rounded-full bg-[#a8c7fa] px-6 text-sm font-bold text-[#062e6f] shadow-[0_2px_8px_rgba(168,199,250,0.22)] transition hover:bg-[#d7e3f8] focus:outline-none focus:ring-4 focus:ring-[#a8c7fa]/20 disabled:cursor-not-allowed disabled:bg-[#938f99]/35 disabled:text-[#cac4d0]/60"
+          >
+            {isRefining ? <Loader2 className="h-5 w-5 animate-spin" /> : <HelpCircle className="h-5 w-5" />}
+            {isRefining ? "Refinando análisis..." : "Enviar respuestas y refinar análisis"}
+          </button>
+        </div>
+      )}
 
       <button onClick={() => downloadPrintableReport(result)} className="inline-flex h-14 w-full items-center justify-center gap-3 rounded-full bg-[#d0bcff] px-7 text-sm font-bold text-[#381e72] shadow-[0_2px_10px_rgba(208,188,255,0.28)] transition hover:bg-[#eaddff] md:w-auto">
         <Download className="h-5 w-5" /> Descargar Reporte en PDF

@@ -25,23 +25,6 @@ const PAYPAL_URL = "https://www.paypal.com/ncp/payment/34PTNK5D9Z8KS";
 const PRICE_LABEL = "$10 USD";
 const ANALYSIS_TIMEOUT_MS = 180000;
 
-const COUNTRY_OPTIONS: { value: SupportedCountry; label: string }[] = [
-  { value: "CO", label: "Colombia 🇨🇴" },
-];
-
-const ROLE_OPTIONS: { value: ContractUserRole; label: string }[] = [
-  { value: "issuer", label: "Soy el Contratante / Empleador / Arrendador" },
-  { value: "receiver", label: "Soy el Contratista / Empleado / Arrendatario" },
-];
-
-const CONTRACT_TYPE_OPTIONS: { value: ContractType; label: string }[] = [
-  { value: "lease", label: "Arrendamiento" },
-  { value: "business_alliance", label: "Vinculación Empresarial / Alianza" },
-  { value: "credit_card_or_credit", label: "Adquisición de Tarjeta / Crédito" },
-  { value: "purchase_sale", label: "Compraventa" },
-  { value: "other", label: "Otro (Especificar)" },
-];
-
 function isStructuredResult(result: ResultState["result"]): result is StructuredAnalysisResult {
   return typeof result === "object" && result !== null && "correct" in result && "protection" in result;
 }
@@ -176,12 +159,13 @@ export function Dashboard() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [promoCode, setPromoCode] = useState("");
-  const [country, setCountry] = useState<SupportedCountry>("CO");
   const [contextText, setContextText] = useState("");
   const [supportCategory, setSupportCategory] = useState<"invoice" | "technical" | "general">("invoice");
   const [supportSubject, setSupportSubject] = useState("");
   const [supportMessage, setSupportMessage] = useState("");
   const [supportSent, setSupportSent] = useState(false);
+  const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({});
+  const [isRefining, setIsRefining] = useState(false);
   const t = copy[locale];
 
   // Redirigir a / si no está autenticado
@@ -210,12 +194,11 @@ export function Dashboard() {
   );
 
   const currentFiles = view === "contract" ? contractFiles : proposalFiles;
-  const validContext = Boolean(contextText.trim());
   const validFiles = view === "contract" ? contractFiles.length === 1 : proposalFiles.length >= 2 && proposalFiles.length <= 4;
   const activeTool = nav.find((item) => item.id === view);
 
   function buildContext(type: AnalysisType): AnalysisContext {
-    return { country, userContext: contextText.trim() };
+    return { country: "CO", userContext: contextText.trim() };
   }
 
   function openPaypal() {
@@ -314,37 +297,39 @@ export function Dashboard() {
 
   return (
     <main className="min-h-screen text-[#e6e1e5]">
-      <aside className="fixed inset-y-0 left-0 hidden h-full w-80 overflow-y-auto border-r border-[#cac4d0]/10 bg-[#1c1b1f]/88 px-4 py-6 shadow-[0_4px_16px_rgba(0,0,0,0.36)] backdrop-blur-xl lg:block">
-        <div className="mb-8 flex items-center gap-3 px-3">
-          <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#a8c7fa] text-[#062e6f]"><Sparkles className="h-5 w-5" /></div>
-          <div>
-            <p className="text-lg font-medium tracking-[-0.02em]">Business Desk</p>
-            <p className="text-xs text-[#cac4d0]">{t.subtitle}</p>
+      <aside className="fixed inset-y-0 left-0 hidden h-screen w-80 border-r border-[#cac4d0]/10 bg-[#1c1b1f]/88 backdrop-blur-xl lg:block">
+        <div className="flex h-full flex-col overflow-y-auto px-4 py-6 select-none">
+          <div className="mb-8 flex items-center gap-3 px-3 shrink-0">
+            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#a8c7fa] text-[#062e6f]"><Sparkles className="h-5 w-5" /></div>
+            <div>
+              <p className="text-lg font-medium tracking-[-0.02em]">Business Desk</p>
+              <p className="text-xs text-[#cac4d0]">{t.subtitle}</p>
+            </div>
           </div>
-        </div>
 
-        <div className="mb-6 px-3">
-          <LanguageSwitch locale={locale} onChange={setLocale} />
-        </div>
-
-        <nav className="space-y-1">
-          {nav.map((item) => (
-            <button key={item.id} onClick={() => setView(item.id)} className={cn("group flex w-full items-center gap-3 rounded-full px-4 py-3 text-left transition", view === item.id ? "bg-[#a8c7fa]/20 text-[#d7e3f8]" : "text-[#cac4d0] hover:bg-[#2b2930] hover:text-[#e6e1e5]") }>
-              <item.icon className={cn("h-5 w-5", view === item.id ? "text-[#a8c7fa]" : "text-[#cac4d0]")} />
-              <div>
-                <p className="text-sm font-medium">{item.label}</p>
-                <p className="text-xs text-[#cac4d0]/75">{item.description}</p>
-              </div>
-            </button>
-          ))}
-        </nav>
-
-        <div className="absolute bottom-6 left-4 right-4 space-y-4">
-          <div className="rounded-3xl bg-[#2b2930] p-4 text-sm shadow-[0_1px_3px_rgba(0,0,0,0.28)]">
-            <div className="flex items-center gap-2 font-medium text-[#d7e3f8]"><ShieldCheck className="h-4 w-4 text-[#a8c7fa]" /> {t.payPerUse}</div>
-            <p className="mt-2 text-xs leading-5 text-[#cac4d0]">{t.payPerUseText}</p>
+          <div className="mb-6 px-3 shrink-0">
+            <LanguageSwitch locale={locale} onChange={setLocale} />
           </div>
-          <button onClick={logout} className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[#938f99]/25 text-sm font-medium text-[#cac4d0] transition hover:bg-[#2b2930] hover:text-[#e6e1e5]"><LogOut className="h-4 w-4" /> {t.logout}</button>
+
+          <nav className="space-y-1">
+            {nav.map((item) => (
+              <button key={item.id} onClick={() => setView(item.id)} className={cn("group flex w-full items-center gap-3 rounded-full px-4 py-3 text-left transition", view === item.id ? "bg-[#a8c7fa]/20 text-[#d7e3f8]" : "text-[#cac4d0] hover:bg-[#2b2930] hover:text-[#e6e1e5]") }>
+                <item.icon className={cn("h-5 w-5", view === item.id ? "text-[#a8c7fa]" : "text-[#cac4d0]")} />
+                <div>
+                  <p className="text-sm font-medium">{item.label}</p>
+                  <p className="text-xs text-[#cac4d0]/75">{item.description}</p>
+                </div>
+              </button>
+            ))}
+          </nav>
+
+          <div className="mt-auto space-y-4 px-3 shrink-0">
+            <div className="rounded-3xl bg-[#2b2930] p-4 text-sm shadow-[0_1px_3px_rgba(0,0,0,0.28)]">
+              <div className="flex items-center gap-2 font-medium text-[#d7e3f8]"><ShieldCheck className="h-4 w-4 text-[#a8c7fa]" /> {t.payPerUse}</div>
+              <p className="mt-2 text-xs leading-5 text-[#cac4d0]">{t.payPerUseText}</p>
+            </div>
+            <button onClick={logout} className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[#938f99]/25 text-sm font-medium text-[#cac4d0] transition hover:bg-[#2b2930] hover:text-[#e6e1e5]"><LogOut className="h-4 w-4" /> {t.logout}</button>
+          </div>
         </div>
       </aside>
 
@@ -379,16 +364,10 @@ export function Dashboard() {
               </div>
 
               <div className="space-y-6 p-7 md:p-9">
-                <div className="grid gap-4 rounded-[1.75rem] bg-[#2b2930] p-5 ring-1 ring-[#cac4d0]/10">
+                <div className="rounded-[1.75rem] bg-[#2b2930] p-5 ring-1 ring-[#cac4d0]/10">
                   <label className="space-y-2 text-sm font-medium text-[#e6e1e5]">
-                    País de Aplicación Legislativa
-                    <select value={country} onChange={(e) => setCountry(e.target.value as SupportedCountry)} className="h-12 w-full rounded-2xl border border-[#938f99]/25 bg-[#1c1b1f] px-4 text-sm text-[#e6e1e5] focus:border-[#a8c7fa] focus:outline-none focus:ring-2 focus:ring-[#a8c7fa]/20">
-                      {COUNTRY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                    </select>
-                  </label>
-                  <label className="space-y-2 text-sm font-medium text-[#e6e1e5] md:col-span-2">
                     Contexto del Documento
-                    <textarea value={contextText} onChange={(e) => setContextText(e.target.value)} rows={5} className="w-full resize-none rounded-2xl border border-[#938f99]/25 bg-[#1c1b1f] px-4 py-3 text-sm text-[#e6e1e5] placeholder:text-[#cac4d0]/50 focus:border-[#a8c7fa] focus:outline-none focus:ring-2 focus:ring-[#a8c7fa]/20" placeholder="Describe los detalles, objetivos y lo que buscas con el documento. Ej: Soy el arrendador y quiero asegurar que el contrato incluya cláusulas de penalización por mora..." />
+                    <textarea value={contextText} onChange={(e) => setContextText(e.target.value)} rows={5} className="w-full resize-none rounded-2xl border border-[#938f99]/25 bg-[#1c1b1f] px-4 py-3 text-sm text-[#e6e1e5] placeholder:text-[#cac4d0]/50 focus:border-[#a8c7fa] focus:outline-none focus:ring-2 focus:ring-[#a8c7fa]/20" placeholder="Ej: Soy el contratista en Colombia, es un contrato de arrendamiento y quiero revisar penalidades ocultas..." />
                   </label>
                 </div>
                 {view === "contract" ? (
@@ -406,7 +385,7 @@ export function Dashboard() {
                   />
                   <span className="text-xs text-[#cac4d0]/75">{t.promoCodeLabel}</span>
                 </div>
-                <button disabled={busy || !validContext || !validFiles} onClick={openPaypal} className="inline-flex h-14 w-full items-center justify-center gap-3 rounded-full bg-[#a8c7fa] px-7 text-sm font-bold text-[#062e6f] shadow-[0_2px_8px_rgba(168,199,250,0.22)] transition hover:bg-[#d7e3f8] focus:outline-none focus:ring-4 focus:ring-[#a8c7fa]/20 disabled:cursor-not-allowed disabled:bg-[#938f99]/35 disabled:text-[#cac4d0]/60 md:w-auto">
+                <button disabled={busy || !validFiles} onClick={openPaypal} className="inline-flex h-14 w-full items-center justify-center gap-3 rounded-full bg-[#a8c7fa] px-7 text-sm font-bold text-[#062e6f] shadow-[0_2px_8px_rgba(168,199,250,0.22)] transition hover:bg-[#d7e3f8] focus:outline-none focus:ring-4 focus:ring-[#a8c7fa]/20 disabled:cursor-not-allowed disabled:bg-[#938f99]/35 disabled:text-[#cac4d0]/60 md:w-auto">
                   {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileSearch className="h-5 w-5" />}
                   {busy ? t.preparing : promoCode === "MAFE_DEV_2026" ? t.payButtonFree : t.payButton}
                 </button>
@@ -438,7 +417,21 @@ export function Dashboard() {
               {resultState?.status === "processing" && paymentStage !== "processing" && <div className="mt-8 flex items-center gap-3 rounded-3xl bg-[#2b2930] p-5 text-sm text-[#d7e3f8]"><Loader2 className="h-5 w-5 animate-spin text-[#a8c7fa]" /> {t.status}: {resultState.status}. {t.autoUpdate}</div>}
               {resultState && resultState.status !== "completed" && resultState.status !== "processing" && !resultState.error && <div className="mt-8 rounded-3xl bg-[#2b2930] p-5 text-sm text-[#d7e3f8]">{t.status}: {resultState.status}</div>}
               {resultState?.error && <div className="mt-8 rounded-3xl bg-[#f2b8b5]/12 p-5 text-sm text-[#f2b8b5]">{resultState.error}</div>}
-              {resultState?.result && <div className="mt-8">{isStructuredResult(resultState.result) ? <AnalysisCards result={resultState.result} /> : <MarkdownResult content={resultState.result} />}</div>}
+              {resultState?.result && <div className="mt-8">{isStructuredResult(resultState.result) ? <AnalysisCards result={resultState.result} questionAnswers={questionAnswers} onAnswerChange={(question, answer) => setQuestionAnswers(prev => ({ ...prev, [question]: answer }))} onRefine={async () => {
+                setIsRefining(true);
+                try {
+                  const token = await user.getIdToken();
+                  const answersText = Object.entries(questionAnswers).map(([q, a]) => `Pregunta: ${q}\nRespuesta: ${a}`).join("\n\n");
+                  const refinedContext = `${contextText}\n\n---\n\nRespuestas a preguntas de refinamiento:\n${answersText}`;
+                  const type = resultState.id ? (contractFiles.length ? "contract" : "proposals") : "contract";
+                  const files = contractFiles.length ? contractFiles : proposalFiles;
+                  await confirmPaymentAndAnalyze(type, files, { country: "CO", userContext: refinedContext });
+                } catch {
+                  console.error("Failed to refine analysis");
+                } finally {
+                  setIsRefining(false);
+                }
+              }} isRefining={isRefining} /> : <MarkdownResult content={resultState.result} />}</div>}
             </section>
           )}
 
