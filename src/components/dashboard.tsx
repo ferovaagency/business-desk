@@ -4,11 +4,12 @@ import { ArrowRight, BriefcaseBusiness, CheckCircle2, Clock3, FileSearch, Langua
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AnalysisCards } from "@/components/analysis-cards";
+import { ProposalComparisonCards } from "@/components/proposal-comparison-cards";
 import { useAuth } from "@/components/auth-provider";
 import { FileDropzone } from "@/components/file-dropzone";
 import { MarkdownResult } from "@/components/markdown-result";
 import { cn } from "@/lib/utils";
-import type { AnalysisContext, AnalysisType, ContractType, ContractUserRole, StructuredAnalysisResult, SupportedCountry } from "@/lib/types";
+import type { AnalysisContext, AnalysisType, ContractType, ContractUserRole, StructuredAnalysisResult, ProposalComparisonResult, AnyAnalysisResult, SupportedCountry } from "@/lib/types";
 
 type View = "contract" | "proposals" | "history" | "support";
 type Locale = "es" | "en";
@@ -17,7 +18,7 @@ type PaymentStage = "idle" | "paypal-opened" | "processing";
 type ResultState = {
   id?: string;
   status: string;
-  result?: string | StructuredAnalysisResult;
+  result?: AnyAnalysisResult | string;
   error?: string;
 };
 
@@ -26,7 +27,11 @@ const PRICE_LABEL = "$10 USD";
 const ANALYSIS_TIMEOUT_MS = 180000;
 
 function isStructuredResult(result: ResultState["result"]): result is StructuredAnalysisResult {
-  return typeof result === "object" && result !== null && "correct" in result && "protection" in result;
+  return typeof result === "object" && result !== null && "correct" in result && "protection" in result && (result as StructuredAnalysisResult).metadata?.analysisType === "contract";
+}
+
+function isProposalResult(result: ResultState["result"]): result is ProposalComparisonResult {
+  return typeof result === "object" && result !== null && "proposals" in result && "businessObjective" in result;
 }
 
 const copy = {
@@ -431,7 +436,19 @@ export function Dashboard() {
                 } finally {
                   setIsRefining(false);
                 }
-              }} isRefining={isRefining} /> : <MarkdownResult content={resultState.result} />}</div>}
+              }} isRefining={isRefining} /> : isProposalResult(resultState.result) ? <ProposalComparisonCards result={resultState.result} questionAnswers={questionAnswers} onAnswerChange={(question, answer) => setQuestionAnswers(prev => ({ ...prev, [question]: answer }))} onRefine={async () => {
+                setIsRefining(true);
+                try {
+                  const token = await user.getIdToken();
+                  const answersText = Object.entries(questionAnswers).map(([q, a]) => `Pregunta: ${q}\nRespuesta: ${a}`).join("\n\n");
+                  const refinedContext = `${contextText}\n\n---\n\nRespuestas a preguntas de refinamiento:\n${answersText}`;
+                  await confirmPaymentAndAnalyze("proposals", proposalFiles, { country: "CO", userContext: refinedContext });
+                } catch {
+                  console.error("Failed to refine proposal analysis");
+                } finally {
+                  setIsRefining(false);
+                }
+              }} isRefining={isRefining} /> : <MarkdownResult content={resultState.result as string} />}</div>}
             </section>
           )}
 

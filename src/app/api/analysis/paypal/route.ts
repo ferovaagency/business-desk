@@ -1,4 +1,4 @@
-﻿import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue } from "firebase-admin/firestore";
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/api-auth";
 import { adminDb } from "@/lib/firebase-admin";
@@ -6,7 +6,7 @@ import { generateBusinessAnalysis } from "@/lib/gemini";
 import { extractPdfTextFromBuffer } from "@/lib/pdf";
 import { downloadTemporaryPdf, uploadTemporaryPdf } from "@/lib/storage";
 import { buildExpertisePrompt } from "@/expertise";
-import type { AnalysisContext, AnalysisType, ContractType, ContractUserRole, StructuredAnalysisResult, SupportedCountry, ExpertiseTool } from "@/lib/types";
+import type { AnalysisContext, AnalysisType, ContractType, ContractUserRole, StructuredAnalysisResult, ProposalComparisonResult, SupportedCountry, ExpertiseTool } from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -17,7 +17,7 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
-function parseStructuredResult(raw: string, context: AnalysisContext, type: AnalysisType): StructuredAnalysisResult {
+function parseStructuredResult(raw: string, context: AnalysisContext): StructuredAnalysisResult {
   const clean = raw.trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
   const parsed = JSON.parse(clean) as Partial<StructuredAnalysisResult>;
   const ensureArray = (value: unknown) => Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [];
@@ -34,7 +34,40 @@ function parseStructuredResult(raw: string, context: AnalysisContext, type: Anal
       country: parsed.metadata?.country ?? context.country,
       userRole: parsed.metadata?.userRole ?? context.userRole,
       contractType: parsed.metadata?.contractType ?? context.contractType,
-      analysisType: type,
+      analysisType: "contract",
+    },
+  };
+}
+
+function parseProposalResult(raw: string, context: AnalysisContext): ProposalComparisonResult {
+  const clean = raw.trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
+  const parsed = JSON.parse(clean) as Partial<ProposalComparisonResult>;
+  const ensureStringArray = (value: unknown) =>
+    Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      : [];
+
+  const proposals = Array.isArray(parsed.proposals)
+    ? parsed.proposals.map((p, i) => ({
+        name: typeof p?.name === "string" && p.name.trim() ? p.name : `Propuesta ${String.fromCharCode(65 + i)}`,
+        alignmentScore: typeof p?.alignmentScore === "number" ? Math.min(100, Math.max(0, Math.round(p.alignmentScore))) : 0,
+        strengths: ensureStringArray(p?.strengths),
+        weaknesses: ensureStringArray(p?.weaknesses),
+        whatItContributes: ensureStringArray(p?.whatItContributes),
+        whatItLacks: ensureStringArray(p?.whatItLacks),
+      }))
+    : [];
+
+  return {
+    businessObjective: typeof parsed.businessObjective === "string" ? parsed.businessObjective : "Objetivo no especificado.",
+    summary: typeof parsed.summary === "string" ? parsed.summary : "Comparación generada correctamente.",
+    recommendation: typeof parsed.recommendation === "string" ? parsed.recommendation : "Ver detalles en cada propuesta.",
+    proposals,
+    negotiationTips: ensureStringArray(parsed.negotiationTips),
+    keyQuestions: ensureStringArray(parsed.keyQuestions),
+    metadata: {
+      country: parsed.metadata?.country ?? context.country,
+      analysisType: "proposals",
     },
   };
 }
@@ -144,7 +177,9 @@ export async function POST(request: NextRequest) {
       console.log(`[PayPal API][${requestId}] Prompt preview (first 200 chars): ${prompt.substring(0, 200)}...`);
       console.log(`[PayPal API][${requestId}] Sending content to Gemini chars=${content.length}`);
       const rawResult = await withTimeout(generateBusinessAnalysis(prompt, content), STEP_TIMEOUT_MS + 15000, "La generación del informe con Gemini");
-      const result = parseStructuredResult(rawResult, context, type);
+      const result = type === "proposals"
+        ? parseProposalResult(rawResult, context)
+        : parseStructuredResult(rawResult, context);
       console.log(`[PayPal API][${requestId}] Gemini completed resultChars=${rawResult.length}`);
 
       await withTimeout(analysisRef.update({

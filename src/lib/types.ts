@@ -1,4 +1,4 @@
-﻿export type AnalysisType = "contract" | "proposals";
+export type AnalysisType = "contract" | "proposals";
 export type SupportedCountry = "CO" | "US" | "BR";
 export type ContractUserRole = "issuer" | "receiver";
 export type ContractType = "lease" | "business_alliance" | "credit_card_or_credit" | "purchase_sale" | "other";
@@ -36,9 +36,33 @@ export type StructuredAnalysisResult = {
     country: string;
     userRole?: string;
     contractType?: string;
-    analysisType: AnalysisType;
+    analysisType: "contract";
   };
 };
+
+export type ProposalItem = {
+  name: string;
+  alignmentScore: number; // 0-100
+  strengths: string[];
+  weaknesses: string[];
+  whatItContributes: string[];
+  whatItLacks: string[];
+};
+
+export type ProposalComparisonResult = {
+  businessObjective: string;
+  summary: string;
+  recommendation: string;
+  proposals: ProposalItem[];
+  negotiationTips: string[];
+  keyQuestions: string[];
+  metadata: {
+    country: string;
+    analysisType: "proposals";
+  };
+};
+
+export type AnyAnalysisResult = StructuredAnalysisResult | ProposalComparisonResult;
 
 export type AnalysisRecord = {
   id: string;
