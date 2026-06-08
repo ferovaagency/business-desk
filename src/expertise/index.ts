@@ -5,7 +5,7 @@
 
 import type { AnalysisContext, AnalysisType } from "@/lib/types";
 
-type ExpertiseKey = "legal" | "financial" | "tax" | "hr";
+type ExpertiseKey = "legal" | "financial" | "tax" | "hr" | "proposals";
 
 const EXPERTISE_MAP: Record<string, Record<ExpertiseKey, () => { PROMPT: string }>> = {
   colombia: {
@@ -13,18 +13,21 @@ const EXPERTISE_MAP: Record<string, Record<ExpertiseKey, () => { PROMPT: string 
     financial: () => require("./colombia/financial"),
     tax: () => require("./colombia/tax"),
     hr: () => require("./colombia/hr"),
+    proposals: () => require("./colombia/proposals"),
   },
   usa: {
     legal: () => require("./usa/legal"),
     financial: () => require("./usa/financial"),
     tax: () => require("./usa/tax"),
     hr: () => require("./usa/hr"),
+    proposals: () => require("./colombia/proposals"),
   },
   brasil: {
     legal: () => require("./brasil/legal"),
     financial: () => require("./brasil/financial"),
     tax: () => require("./brasil/tax"),
     hr: () => require("./brasil/hr"),
+    proposals: () => require("./colombia/proposals"),
   },
 };
 

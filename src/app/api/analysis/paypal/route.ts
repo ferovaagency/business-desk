@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
         }),
       );
 
-      const toolType: ExpertiseTool = type === "contract" ? "legal" : "financial";
+      const toolType: ExpertiseTool = type === "contract" ? "legal" : "proposals";
       const prompt = buildExpertisePrompt(countryForExpertise, toolType, context, type);
       const content = type === "contract" ? sections[0] : sections.join("\n\n---\n\n");
       console.log(`[PayPal API][${requestId}] Sending content to Gemini chars=${content.length}`);

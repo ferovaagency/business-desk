@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, Download, FileText, HelpCircle, Loader2, ShieldCheck, Siren } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileText, HelpCircle, Loader2, ShieldCheck, Siren } from "lucide-react";
 import type { StructuredAnalysisResult } from "@/lib/types";
 
 function normalizeItems(items: string[] | undefined) {
@@ -31,24 +31,6 @@ function Card({ title, subtitle, items, tone, icon }: { title: string; subtitle:
       </ul>
     </section>
   );
-}
-
-function downloadPrintableReport(result: StructuredAnalysisResult) {
-  const sections: [string, string[]][] = [
-    ["Lo Correcto", result.correct],
-    ["Peligro para la Parte 1", result.riskPartyOne],
-    ["Peligro para la Parte 2", result.riskPartyTwo],
-    ["Cómo protegerte", result.protection],
-    ["Lo que falta", result.missing],
-    ["🔍 Preguntas Clave para Refinar tu Blindaje", result.keyQuestions],
-  ];
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Reporte Business Desk</title><style>body{font-family:Arial,sans-serif;margin:40px;color:#1d1b20}h1{font-size:28px}h2{margin-top:28px;color:#0b57d0}.meta{color:#5f6368}.card{border:1px solid #dadce0;border-radius:18px;padding:18px;margin:14px 0}li{margin:8px 0;line-height:1.5}</style></head><body><h1>Reporte Business Desk</h1><p class="meta">${result.summary}</p><p class="meta">País: ${result.metadata.country} | Rol: ${result.metadata.userRole || "No aplica"} | Tipo: ${result.metadata.contractType || result.metadata.analysisType}</p>${sections.map(([title, items]) => `<div class="card"><h2>${title}</h2><ul>${items.map((item) => `<li>${item}</li>`).join("")}</ul></div>`).join("")}</body></html>`;
-  const printWindow = window.open("", "_blank", "noopener,noreferrer");
-  if (!printWindow) return;
-  printWindow.document.write(html);
-  printWindow.document.close();
-  printWindow.focus();
-  printWindow.print();
 }
 
 export function AnalysisCards({ result, questionAnswers, onAnswerChange, onRefine, isRefining }: { result: StructuredAnalysisResult; questionAnswers?: Record<string, string>; onAnswerChange?: (question: string, answer: string) => void; onRefine?: () => void; isRefining?: boolean }) {
@@ -103,9 +85,6 @@ export function AnalysisCards({ result, questionAnswers, onAnswerChange, onRefin
         </div>
       )}
 
-      <button onClick={() => downloadPrintableReport(result)} className="inline-flex h-14 w-full items-center justify-center gap-3 rounded-full bg-[#d0bcff] px-7 text-sm font-bold text-[#381e72] shadow-[0_2px_10px_rgba(208,188,255,0.28)] transition hover:bg-[#eaddff] md:w-auto">
-        <Download className="h-5 w-5" /> Descargar Reporte en PDF
-      </button>
     </article>
   );
 }
