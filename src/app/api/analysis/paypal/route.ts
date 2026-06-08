@@ -139,6 +139,9 @@ export async function POST(request: NextRequest) {
       const toolType: ExpertiseTool = type === "contract" ? "legal" : "proposals";
       const prompt = buildExpertisePrompt(countryForExpertise, toolType, context, type);
       const content = type === "contract" ? sections[0] : sections.join("\n\n---\n\n");
+      
+      console.log(`[PayPal API][${requestId}] Analysis type: ${type}, Tool type: ${toolType}`);
+      console.log(`[PayPal API][${requestId}] Prompt preview (first 200 chars): ${prompt.substring(0, 200)}...`);
       console.log(`[PayPal API][${requestId}] Sending content to Gemini chars=${content.length}`);
       const rawResult = await withTimeout(generateBusinessAnalysis(prompt, content), STEP_TIMEOUT_MS + 15000, "La generación del informe con Gemini");
       const result = parseStructuredResult(rawResult, context, type);

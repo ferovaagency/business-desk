@@ -1,39 +1,56 @@
 /**
  * Matriz Experto-País
- * Mapeo dinámico de prompts por país y disciplina.
+ * Mapeo de prompts por país y disciplina - IMPORTS ESTÁTICOS para compatibilidad con Firebase
  */
 
 import type { AnalysisContext, AnalysisType } from "@/lib/types";
 
+// Imports estáticos de todos los expertise
+import * as colombiaLegal from "./colombia/legal";
+import * as colombiaFinancial from "./colombia/financial";
+import * as colombiaTax from "./colombia/tax";
+import * as colombiaHr from "./colombia/hr";
+import * as colombiaProposals from "./colombia/proposals";
+
+import * as usaLegal from "./usa/legal";
+import * as usaFinancial from "./usa/financial";
+import * as usaTax from "./usa/tax";
+import * as usaHr from "./usa/hr";
+
+import * as brasilLegal from "./brasil/legal";
+import * as brasilFinancial from "./brasil/financial";
+import * as brasilTax from "./brasil/tax";
+import * as brasilHr from "./brasil/hr";
+
 type ExpertiseKey = "legal" | "financial" | "tax" | "hr" | "proposals";
 
-const EXPERTISE_MAP: Record<string, Record<ExpertiseKey, () => { PROMPT: string }>> = {
+const EXPERTISE_MAP: Record<string, Record<ExpertiseKey, { PROMPT: string }>> = {
   colombia: {
-    legal: () => require("./colombia/legal"),
-    financial: () => require("./colombia/financial"),
-    tax: () => require("./colombia/tax"),
-    hr: () => require("./colombia/hr"),
-    proposals: () => require("./colombia/proposals"),
+    legal: colombiaLegal,
+    financial: colombiaFinancial,
+    tax: colombiaTax,
+    hr: colombiaHr,
+    proposals: colombiaProposals,
   },
   usa: {
-    legal: () => require("./usa/legal"),
-    financial: () => require("./usa/financial"),
-    tax: () => require("./usa/tax"),
-    hr: () => require("./usa/hr"),
-    proposals: () => require("./colombia/proposals"),
+    legal: usaLegal,
+    financial: usaFinancial,
+    tax: usaTax,
+    hr: usaHr,
+    proposals: colombiaProposals, // Usamos el de Colombia para USA por ahora
   },
   brasil: {
-    legal: () => require("./brasil/legal"),
-    financial: () => require("./brasil/financial"),
-    tax: () => require("./brasil/tax"),
-    hr: () => require("./brasil/hr"),
-    proposals: () => require("./colombia/proposals"),
+    legal: brasilLegal,
+    financial: brasilFinancial,
+    tax: brasilTax,
+    hr: brasilHr,
+    proposals: colombiaProposals, // Usamos el de Colombia para Brasil por ahora
   },
 };
 
 /**
  * Obtiene el prompt específico según país y tipo de herramienta.
- * Si no existe la combinación, lanza un error claro.
+ * Usa imports estáticos para garantizar compatibilidad con Firebase Functions.
  */
 export function getExpertisePrompt(country: string, toolType: ExpertiseKey): string {
   const countryKey = country.toLowerCase();
@@ -43,13 +60,13 @@ export function getExpertisePrompt(country: string, toolType: ExpertiseKey): str
     throw new Error(`País no soportado: ${country}. Países disponibles: ${Object.keys(EXPERTISE_MAP).join(", ")}`);
   }
 
-  const toolLoader = countryMap[toolType];
-  if (!toolLoader) {
+  const toolModule = countryMap[toolType];
+  if (!toolModule || !toolModule.PROMPT) {
     throw new Error(`Herramienta no disponible para ${country}: ${toolType}. Herramientas disponibles: ${Object.keys(countryMap).join(", ")}`);
   }
 
-  const module = toolLoader();
-  return module.PROMPT;
+  console.log(`[Expertise] Loading prompt: country=${countryKey}, toolType=${toolType}, promptLength=${toolModule.PROMPT.length}`);
+  return toolModule.PROMPT;
 }
 
 /**
